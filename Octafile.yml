@@ -1,0 +1,10 @@
+version: 1
+
+tasks:
+  build-all:
+    deps:
+      - build-zulip
+
+  build-zulip:
+    cmd: cargo component build
+    dir: ./crates/zulip

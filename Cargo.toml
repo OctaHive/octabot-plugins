@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Roman Efremenko <roman.efremenko@gmail.com>"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/OctaHive/octabot-plugins"
+rust-version = "1.83"
+homepage = "https://github.com/OctaHive/octabot-plugins#readme"
+documentation = "https://github.com/OctaHive/octabot-plugins#readme"
+readme = "README.md"
