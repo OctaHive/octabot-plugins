@@ -4,7 +4,12 @@ tasks:
   build-all:
     deps:
       - build-zulip
+      - build-gerrit
 
   build-zulip:
     cmd: cargo component build
     dir: ./crates/zulip
+
+  build-gerrit:
+    cmd: cargo component build
+    dir: ./crates/gerrit

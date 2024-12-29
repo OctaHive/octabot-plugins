@@ -36,15 +36,16 @@ impl ZulipPlugin {
       .join(path)
       .map_err(|e| PluginError::Other(e.to_string()))?;
 
-    println!("{}", url);
-
     let credentials = format!("{}:{}", self.login, self.password);
     let authorization = encode(credentials);
 
     let client = Client::new()
       .request(method, url.as_str())
       .connect_timeout(Duration::from_secs(self.timeout.unwrap_or(60)))
-      .header("Authorization", format!("Basic {}", authorization.as_str()));
+      .headers([
+        ("Content-Type", "application/json"),
+        ("Authorization", &format!("Basic {}", authorization.as_str())),
+      ]);
 
     Ok(client)
   }
