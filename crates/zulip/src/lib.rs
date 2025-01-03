@@ -31,7 +31,7 @@ struct ZulipPlugin {
 
 impl ZulipPlugin {
   fn request(&self, method: Method, path: &str) -> Result<RequestBuilder, PluginError> {
-    let url = Url::parse(&format!("https://{}/", &self.endpoint))
+    let url = Url::parse(&self.endpoint)
       .map_err(|e| PluginError::Other(e.to_string()))?
       .join(path)
       .map_err(|e| PluginError::Other(e.to_string()))?;
@@ -58,8 +58,10 @@ impl ZulipPlugin {
 
 impl Plugin for ZulipPlugin {
   fn process(config: String, payload: String) -> Result<Vec<Action>, Error> {
+    let zulip = ZulipPlugin::parse_configuration(&config)?;
+
     let message = serde_json::from_str::<Message>(&payload)
-      .map_err(|err| PluginError::Other(format!("unable to parse configuration: {}", err)))?;
+      .map_err(|err| PluginError::Other(format!("unable to parse message: {}", err)))?;
 
     let query = [
       ("type", "stream"),
@@ -68,7 +70,6 @@ impl Plugin for ZulipPlugin {
       ("content", &message.message),
     ];
 
-    let zulip = ZulipPlugin::parse_configuration(&config)?;
     let client = zulip.request(Method::Post, "api/v1/messages")?.query(&query);
 
     let resp = match client.send() {
