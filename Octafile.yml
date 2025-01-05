@@ -5,6 +5,8 @@ tasks:
     deps:
       - build-zulip
       - build-gerrit
+      - build-exchange
+      - build-teamcity
 
   build-zulip:
     cmd: cargo component build
@@ -13,3 +15,11 @@ tasks:
   build-gerrit:
     cmd: cargo component build
     dir: ./crates/gerrit
+
+  build-exchange:
+    cmd: cargo component build
+    dir: ./crates/exchange
+
+  build-teamcity:
+    cmd: cargo component build
+    dir: ./crates/teamcity

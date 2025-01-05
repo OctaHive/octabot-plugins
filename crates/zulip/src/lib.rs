@@ -47,11 +47,13 @@ struct PostMessageResponse {
 struct ZulipPlugin;
 
 impl ZulipPlugin {
-  fn request(key: String, method: Method, path: &str) -> Result<RequestBuilder, PluginError> {
-    let limiter = RATE_LIMITER.lock().map_err(|e| PluginError::Other(e.to_string()))?;
+  fn request(key: String, path: &str) -> Result<RequestBuilder, PluginError> {
+    let limiter = RATE_LIMITER
+      .lock()
+      .map_err(|e| PluginError::Other(format!("Can't lock rate limiter: {}", e.to_string())))?;
     let config = CONFIG
       .lock()
-      .map_err(|e| PluginError::Other(e.to_string()))?
+      .map_err(|e| PluginError::ConfigLock(e.to_string()))?
       .clone()
       .ok_or_else(|| PluginError::Other("Config not initialized".to_string()))?;
 
@@ -72,7 +74,7 @@ impl ZulipPlugin {
       let authorization = encode(credentials);
 
       let client = Client::new()
-        .request(method, url.as_str())
+        .request(Method::Post, url.as_str())
         .connect_timeout(Duration::from_secs(config.timeout.unwrap_or(60)))
         .headers([
           ("Content-Type", "application/json"),
@@ -89,7 +91,7 @@ impl ZulipPlugin {
 impl Plugin for ZulipPlugin {
   fn process(payload: String) -> Result<Vec<PluginResult>, Error> {
     let params = serde_json::from_str::<Params>(&payload)
-      .map_err(|err| PluginError::ParseActionPaylod(format!("unable to parse zulip message: {}", err)))?;
+      .map_err(|err| PluginError::ParseActionPaylod(format!("unable to parse zulip params: {}", err)))?;
 
     let query = [
       ("type", "stream"),
@@ -98,7 +100,7 @@ impl Plugin for ZulipPlugin {
       ("content", &params.options.message),
     ];
 
-    let client = ZulipPlugin::request(params.task_id, Method::Post, "api/v1/messages")?.query(&query);
+    let client = ZulipPlugin::request(params.task_id, "api/v1/messages")?.query(&query);
 
     let resp = match client.send() {
       Ok(resp) => match resp.status_code() {
@@ -123,7 +125,7 @@ impl Plugin for ZulipPlugin {
   fn init(config: String) -> Result<(), Error> {
     let config = serde_json::from_str::<Config>(&config).map_err(|err| PluginError::ParseBotConfig(err.to_string()))?;
 
-    let mut global_config = CONFIG.lock().map_err(|e| PluginError::Other(e.to_string()))?;
+    let mut global_config = CONFIG.lock().map_err(|e| PluginError::ConfigLock(e.to_string()))?;
     *global_config = Some(config.clone());
 
     let mut limiter = RATE_LIMITER.lock().map_err(|e| PluginError::Other(e.to_string()))?;
@@ -132,6 +134,7 @@ impl Plugin for ZulipPlugin {
         .ok_or_else(|| PluginError::Other("Invalid rate limit value".to_string()))?;
 
       *limiter = Some(RateLimiter::keyed(Quota::per_minute(rate)));
+      // TODO: change to logging
       println!(
         "Rate limiter initialized with {} requests per minute.",
         config.max_request_in_minute

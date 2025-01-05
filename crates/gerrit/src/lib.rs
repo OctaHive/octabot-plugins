@@ -25,6 +25,8 @@ struct Config {
 #[derive(Serialize, Deserialize)]
 struct QueryOptions {
   query: String,
+  channel: String,
+  topic: String,
   project: String,
   template: String,
   review_template: String,
@@ -81,10 +83,10 @@ struct Review {
 struct GerritPlugin;
 
 impl GerritPlugin {
-  fn request(method: Method, path: &str) -> Result<RequestBuilder, PluginError> {
+  fn request(path: &str) -> Result<RequestBuilder, PluginError> {
     let config = CONFIG
       .lock()
-      .map_err(|e| PluginError::Other(e.to_string()))?
+      .map_err(|e| PluginError::ConfigLock(e.to_string()))?
       .clone()
       .ok_or_else(|| PluginError::Other("Config not initialized".to_string()))?;
 
@@ -94,7 +96,7 @@ impl GerritPlugin {
     let authorization = encode(credentials);
 
     let client = Client::new()
-      .request(method, url.as_str())
+      .request(Method::Get, url.as_str())
       .connect_timeout(Duration::from_secs(config.timeout.unwrap_or(60)))
       .headers([
         ("Content-Type", "application/json"),
@@ -119,7 +121,7 @@ impl GerritPlugin {
       ("project".to_string(), params.project.to_string()),
     ]);
 
-    strfmt(template, &vars).map_err(|e| PluginError::Other(format!("Failed to format message: {}", e)))
+    strfmt(template, &vars).map_err(|e| PluginError::Other(format!("Failed to format review message template: {}", e)))
   }
 }
 
@@ -136,7 +138,7 @@ impl Plugin for GerritPlugin {
       ("o", &"LABELS".to_string()),
     ];
 
-    let client = GerritPlugin::request(Method::Get, "a/changes")?.query(&query);
+    let client = GerritPlugin::request("a/changes")?.query(&query);
 
     let resp = match client.send() {
       Ok(resp) => match resp.status_code() {
@@ -155,19 +157,19 @@ impl Plugin for GerritPlugin {
 
     let data = resp
       .strip_prefix(GERRIT_RESPONSE_PREFIX)
-      .ok_or_else(|| PluginError::Other("Invalid response format".into()))?;
+      .ok_or_else(|| PluginError::ParseResponse("Missing gerrit prefix in response".into()))?;
 
-    let reviews: Vec<Review> =
-      serde_json::from_str(data).map_err(|e| PluginError::Other(format!("Failed to parse response: {}", e)))?;
+    let reviews: Vec<Review> = serde_json::from_str(data)
+      .map_err(|e| PluginError::ParseResponse(format!("Failed to parse reviews from response: {}", e)))?;
 
     if !reviews.is_empty() {
       let vars = HashMap::from([("project".to_string(), params.options.project.to_string())]);
       let mut message = strfmt(&params.options.template, &vars)
-        .map_err(|e| PluginError::Other(format!("Failed to format message: {}", e)))?;
+        .map_err(|e| PluginError::Other(format!("Failed to format message template: {}", e)))?;
 
       let config = CONFIG
         .lock()
-        .map_err(|e| PluginError::Other(e.to_string()))?
+        .map_err(|e| PluginError::ConfigLock(e.to_string()))?
         .clone()
         .ok_or_else(|| PluginError::Other("Config not initialized".to_string()))?;
 
@@ -178,12 +180,12 @@ impl Plugin for GerritPlugin {
       }
 
       let action = ActionData {
-        name: "zulip".to_string(),
+        name: "zulip".to_string(), // Name of notificationm zulip action
         payload: json!({
           "task_id": params.task_id,
           "options": {
-            "channel": "Develop_test",
-            "topic": "Подвисшие ревью",
+            "channel": params.options.channel,
+            "topic": params.options.topic,
             "message": message
           }
         })
@@ -198,7 +200,7 @@ impl Plugin for GerritPlugin {
 
   fn init(config: String) -> Result<(), Error> {
     let config = serde_json::from_str::<Config>(&config).map_err(|err| PluginError::ParseBotConfig(err.to_string()))?;
-    let mut global_config = CONFIG.lock().map_err(|e| PluginError::Other(e.to_string()))?;
+    let mut global_config = CONFIG.lock().map_err(|e| PluginError::ConfigLock(e.to_string()))?;
     *global_config = Some(config.clone());
 
     Ok(())
