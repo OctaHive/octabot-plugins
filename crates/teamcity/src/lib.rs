@@ -84,7 +84,7 @@ impl TeamcityPlugin {
       }
     }
 
-    return false;
+    false
   }
 }
 

@@ -10,8 +10,9 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use waki::{Client, Method, RequestBuilder};
 
-static RATE_LIMITER: Lazy<Mutex<Option<RateLimiter<String, DefaultKeyedStateStore<String>, DefaultClock>>>> =
-  Lazy::new(|| Mutex::new(None));
+type Limiter = RateLimiter<String, DefaultKeyedStateStore<String>, DefaultClock>;
+
+static RATE_LIMITER: Lazy<Mutex<Option<Limiter>>> = Lazy::new(|| Mutex::new(None));
 
 static CONFIG: Lazy<Mutex<Option<Config>>> = Lazy::new(|| Mutex::new(None));
 
@@ -50,7 +51,7 @@ impl ZulipPlugin {
   fn request(key: String, path: &str) -> Result<RequestBuilder, PluginError> {
     let limiter = RATE_LIMITER
       .lock()
-      .map_err(|e| PluginError::Other(format!("Can't lock rate limiter: {}", e.to_string())))?;
+      .map_err(|e| PluginError::Other(format!("Can't lock rate limiter: {}", e)))?;
     let config = CONFIG
       .lock()
       .map_err(|e| PluginError::ConfigLock(e.to_string()))?
@@ -83,7 +84,7 @@ impl ZulipPlugin {
 
       Ok(client)
     } else {
-      return Err(PluginError::Other("Rate limiter not initialized".to_string()));
+      Err(PluginError::Other("Rate limiter not initialized".to_string()))
     }
   }
 }

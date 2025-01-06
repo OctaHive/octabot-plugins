@@ -100,7 +100,7 @@ impl ExchangePlugin {
     let nego_b64 = BASE64_STANDARD.encode(&nego_msg_bytes);
 
     let client = Client::new()
-      .request(Method::Get, &url)
+      .request(Method::Get, url)
       .connect_timeout(Duration::from_secs(60))
       .header("Authorization", format!("NTLM {}", nego_b64));
 
@@ -159,7 +159,7 @@ impl ExchangePlugin {
         let auth_b64 = BASE64_STANDARD.encode(&auth_msg_bytes);
 
         let client = Client::new()
-          .request(Method::Get, &url)
+          .request(Method::Get, url)
           .connect_timeout(Duration::from_secs(60))
           .headers([
             ("Authorization", format!("NTLM {}", auth_b64)),
@@ -192,22 +192,22 @@ impl ExchangePlugin {
                   }
                 }
               },
-              Err(e) => return Err(PluginError::ParseResponse(e.to_string()).into()),
+              Err(e) => return Err(PluginError::ParseResponse(e.to_string())),
             },
-            code => return Err(PluginError::Other(format!("HTTP/{}", code)).into()),
+            code => return Err(PluginError::Other(format!("HTTP/{}", code))),
           },
-          Err(e) => return Err(PluginError::Other(e.to_string()).into()),
+          Err(e) => return Err(PluginError::Other(e.to_string())),
         }
       },
-      Err(e) => return Err(PluginError::Other(e.to_string()).into()),
+      Err(e) => return Err(PluginError::Other(e.to_string())),
     }
 
     Ok(result)
   }
 
-  fn process_single_event<'b>(event: &ExchangeEvent) -> Result<TaskData, PluginError> {
-    let options = ExchangePlugin::parse_event_options(&event)?;
-    let start_time = ExchangePlugin::parse_event_time(&event)?;
+  fn process_single_event(event: &ExchangeEvent) -> Result<TaskData, PluginError> {
+    let options = ExchangePlugin::parse_event_options(event)?;
+    let start_time = ExchangePlugin::parse_event_time(event)?;
     let modified_at: DateTime<FixedOffset> = DateTime::parse_from_rfc3339(&event.last_modified)
       .map_err(|e| PluginError::Other(format!("Invalid datetime format: {}", e)))?;
 
@@ -233,7 +233,7 @@ impl ExchangePlugin {
   fn parse_event_options(event: &ExchangeEvent) -> Result<HashMap<String, String>, PluginError> {
     let html_re = Regex::new(r"<[^>]*>").unwrap();
     let no_html = html_re.replace_all(&event.body.content, "");
-    let no_line_breaks = no_html.replace('\n', " ").replace('\r', " ");
+    let no_line_breaks = no_html.replace(['\n', '\r'], " ");
 
     let regex = Regex::new(EVENT_SHEBANG_REGEXP)
       .map_err(|e| PluginError::Other(format!("Failed to parse bot options regexp: {}", e)))?;
@@ -242,7 +242,7 @@ impl ExchangePlugin {
       .captures(&no_line_breaks)
       .ok_or_else(|| PluginError::Other("No bot options found in event".to_owned()))?;
 
-    ExchangePlugin::parse_options(&captures[1].trim())
+    ExchangePlugin::parse_options(captures[1].trim())
   }
 
   fn parse_options(raw_options: &str) -> Result<HashMap<String, String>, PluginError> {
@@ -270,11 +270,9 @@ impl ExchangePlugin {
     let naive = NaiveDateTime::parse_from_str(&event.start.date_time, "%Y-%m-%dT%H:%M:%S%.f")
       .map_err(|e| PluginError::Other(format!("Invalid datetime format: {}", e)))?;
 
-    Ok(
-      tz.from_local_datetime(&naive)
-        .single()
-        .ok_or_else(|| PluginError::Other("Invalid timestamp".to_owned()))?,
-    )
+    tz.from_local_datetime(&naive)
+      .single()
+      .ok_or_else(|| PluginError::Other("Invalid timestamp".to_owned()))
   }
 }
 
