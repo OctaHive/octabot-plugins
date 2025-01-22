@@ -9,17 +9,17 @@ tasks:
       - build-teamcity
 
   build-zulip:
-    cmd: cargo component build
+    shell: cargo component build --release
     dir: ./crates/zulip
 
   build-gerrit:
-    cmd: cargo component build
+    shell: cargo component build --release
     dir: ./crates/gerrit
 
   build-exchange:
-    cmd: cargo component build
+    shell: cargo component build --release
     dir: ./crates/exchange
 
   build-teamcity:
-    cmd: cargo component build
+    shell: cargo component build --release
     dir: ./crates/teamcity
