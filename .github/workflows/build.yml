@@ -31,12 +31,29 @@ jobs:
       - name: Build plugin
         shell: bash
         run: |
-          cargo component build --release --locked -p {{ matrix.component }}
+          cargo component build --release --locked -p ${{ matrix.component }}
 
       - name: Collect Artifacts
         run: |
           mkdir -p release
           cp target/wasm32-wasip1/release/${{ matrix.component }} release/
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-plugins
+          path: release/*
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Built Plugins
+        uses: actions/download-artifact@v4
+        with:
+          name: built-plugins
+          path: release
 
       - name: Package as archive
         shell: bash
