@@ -41,7 +41,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: built-plugins
+          name: built-plugin-${{ matrix.component }}
           path: release/*
           overwrite: true
 
@@ -55,11 +55,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Built Plugins
+      - name: Create release directory
+        run: mkdir -p release
+
+      - name: Download All Built Plugins
         uses: actions/download-artifact@v4
         with:
-          name: built-plugins
+          pattern: built-plugin-*
           path: release
+          merge-multiple: true
 
       - name: Package as archive
         shell: bash
