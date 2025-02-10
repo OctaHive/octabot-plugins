@@ -25,6 +25,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install `cargo-component`
+        run: cargo install cargo-component
+
       - name: Build plugin
         shell: bash
         run: |
