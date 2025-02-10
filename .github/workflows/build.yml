@@ -43,6 +43,7 @@ jobs:
         with:
           name: built-plugins
           path: release/*
+          overwrite: true
 
   package:
     needs: build
