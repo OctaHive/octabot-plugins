@@ -1,0 +1,57 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - "v*"
+      - test-release
+
+env:
+  CARGO_TERM_COLOR: always
+  TARGET_DIR: target_ci
+
+jobs:
+  build:
+    name: Build for ${{ matrix.component }
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: ["zulip", "gerrit", "exchange", "teamcity"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build plugin
+        shell: bash
+        run: |
+          cargo component build --release --locked -p {{ matrix.component }}
+
+      - name: Collect Artifacts
+        run: |
+          mkdir -p release
+          cp target/wasm32-wasip1/release/${{ matrix.component }} release/
+
+      - name: Package as archive
+        shell: bash
+        run: |
+          tar czvf octabot-plugins.tar.gz -C ./release .
+
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: octabot-plugins
+          path: "octabot-plugins.tar.gz"
+        if: github.ref == 'refs/tags/test-release'
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: "octabot-plugins.tar.gz"
+          token: ${{ github.token }}
+          body_path: Changelog.md
+        if: startsWith( github.ref, 'refs/tags/v' )
