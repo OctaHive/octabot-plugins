@@ -36,7 +36,7 @@ jobs:
       - name: Collect Artifacts
         run: |
           mkdir -p release
-          cp target/wasm32-wasip1/release/${{ matrix.component }} release/
+          cp target/wasm32-wasip1/release/${{ matrix.component }}.wasm release/
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
