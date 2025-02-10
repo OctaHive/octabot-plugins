@@ -78,7 +78,7 @@ impl TeamcityPlugin {
   }
 
   fn should_notify(keyvalue: &KeyValue, build: &BuildStatusResponse) -> bool {
-    if let Ok(result) = keyvalue.get(&format!("{}", resp.id)) {
+    if let Ok(result) = keyvalue.get(&format!("{}", build.id)) {
       if result.is_none() && build.state == "finished" && build.status == "FAILURE" {
         return true;
       }
